@@ -79,6 +79,10 @@ module I18n
           else
             Translation.locale(locale).lookup(key)
           end
+        
+          # Visit Widget addition
+          result = result.where(client: options[:client],
+            entity: options[:entity])
 
           if result.empty?
             nil
