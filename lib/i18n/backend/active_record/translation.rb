@@ -51,6 +51,7 @@ module I18n
 
         self.table_name = 'translations'
         
+        # Visit Widget addition
         belongs_to :client
         belongs_to :entity, polymorphic: true
 
