@@ -50,6 +50,9 @@ module I18n
         FALSY_CHAR = "\002"
 
         self.table_name = 'translations'
+        
+        belongs_to :client
+        belongs_to :entity, polymorphic: true
 
         serialize :value
         serialize :interpolations, Array
