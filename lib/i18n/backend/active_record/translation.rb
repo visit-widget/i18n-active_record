@@ -53,8 +53,8 @@ module I18n
         self.table_name = 'translations'
         
         # Visit Widget addition
-        belongs_to :client
-        belongs_to :entity, polymorphic: true
+        belongs_to :client, touch: true
+        belongs_to :entity, polymorphic: true, touch: true
 
         serialize :value
         serialize :interpolations, Array
