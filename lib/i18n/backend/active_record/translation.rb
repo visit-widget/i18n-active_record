@@ -45,7 +45,8 @@ module I18n
     #   Translation.find_by_locale_and_key('en', 'foo').value
     #   # => 'FOO'
     class ActiveRecord
-      class Translation < ::ActiveRecord::Base
+      # Visit Widget edit from ::ActiveRecord::Base to ApplicationRecord
+      class Translation < ApplicationRecord
         TRUTHY_CHAR = "\001"
         FALSY_CHAR = "\002"
 
