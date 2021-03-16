@@ -45,8 +45,7 @@ module I18n
     #   Translation.find_by_locale_and_key('en', 'foo').value
     #   # => 'FOO'
     class ActiveRecord
-      # Visit Widget edit from ::ActiveRecord::Base to ApplicationRecord
-      class Translation < ApplicationRecord
+      class Translation < ::ActiveRecord::Base
         TRUTHY_CHAR = "\001"
         FALSY_CHAR = "\002"
 
@@ -54,7 +53,7 @@ module I18n
         
         # Visit Widget addition
         belongs_to :client, touch: true
-        belongs_to :entity, polymorphic: true, touch: true
+        belongs_to :entity, polymorphic: true, optional: true, touch: true
 
         serialize :value
         serialize :interpolations, Array
