@@ -54,6 +54,8 @@ module I18n
         # Visit Widget addition
         belongs_to :client, touch: true
         belongs_to :entity, polymorphic: true, optional: true, touch: true
+        validates :entity_id, presence: true, if: -> { self.entity_type.present? }
+        validates :entity_type, presence: true, if: -> { self.entity_id.present? }
 
         serialize :value
         serialize :interpolations, Array
