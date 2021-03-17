@@ -55,7 +55,8 @@ module I18n
         belongs_to :client, touch: true
         belongs_to :entity, polymorphic: true, optional: true, touch: true
         validates :entity_id, presence: true, if: -> { self.entity_type.present? }
-        validates :entity_type, presence: true, if: -> { self.entity_id.present? }
+        validates :entity_type, presence: true,
+          if: -> { self.entity_id.present? || self.entity_type == "" }
 
         serialize :value
         serialize :interpolations, Array
@@ -120,6 +121,15 @@ module I18n
           end
 
           write_attribute(:value, value)
+        end
+        
+        # Visit Widget addition
+        def entity_type=(entity_type_value)
+          if entity_type_value == ""
+             entity_type_value = nil
+          end
+          
+          write_attribute(:entity_type, entity_type_value)
         end
       end
     end
