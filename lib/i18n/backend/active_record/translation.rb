@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'active_record'
 
 module I18n
@@ -60,19 +62,20 @@ module I18n
 
         serialize :value
         serialize :interpolations, Array
+        after_commit :invalidate_translations_cache
 
         class << self
           def locale(locale)
-            where(:locale => locale.to_s)
+            where(locale: locale.to_s)
           end
 
           def lookup(keys, *separator)
             column_name = connection.quote_column_name('key')
-            keys = Array(keys).map! { |key| key.to_s }
+            keys = Array(keys).map!(&:to_s)
 
             unless separator.empty?
-              warn "[DEPRECATION] Giving a separator to Translation.lookup is deprecated. " <<
-                "You can change the internal separator by overwriting FLATTEN_SEPARATOR."
+              warn '[DEPRECATION] Giving a separator to Translation.lookup is deprecated. ' \
+                   'You can change the internal separator by overwriting FLATTEN_SEPARATOR.'
             end
 
             namespace = "#{keys.last}#{I18n::Backend::Flatten::FLATTEN_SEPARATOR}%"
@@ -90,14 +93,14 @@ module I18n
               keys.each.with_index.inject(locale_hash) do |iterator, (key_part, index)|
                 key = key_part.to_sym
                 iterator[key] = keys[index + 1] ? (iterator[key] || {}) : t.value
-                iterator[key]
+                iterator[key] # rubocop:disable Lint/UnmodifiedReduceAccumulator
               end
             end
           end
         end
 
         def interpolates?(key)
-          self.interpolations.include?(key) if self.interpolations
+          interpolations&.include?(key)
         end
 
         def value
@@ -114,9 +117,10 @@ module I18n
         end
 
         def value=(value)
-          if value === false
+          case value
+          when false
             value = FALSY_CHAR
-          elsif value === true
+          when true
             value = TRUTHY_CHAR
           end
 
@@ -130,6 +134,10 @@ module I18n
           end
           
           write_attribute(:entity_type, entity_type_value)
+        end
+
+        def invalidate_translations_cache
+          I18n.backend.reload! if I18n::Backend::ActiveRecord.config.cache_translations
         end
       end
     end

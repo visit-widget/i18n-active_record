@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'i18n/backend/base'
 require 'i18n/backend/active_record/translation'
 
@@ -19,34 +21,41 @@ module I18n
         end
       end
 
+      def initialize
+        reload!
+      end
+
       module Implementation
-        include Base, Flatten
+        include Base
+        include Flatten
 
         def available_locales
-          begin
-            Translation.available_locales
-          rescue ::ActiveRecord::StatementInvalid
-            []
-          end
+          Translation.available_locales
+        rescue ::ActiveRecord::StatementInvalid
+          []
         end
 
         def store_translations(locale, data, options = {})
           escape = options.fetch(:escape, true)
+
           flatten_translations(locale, data, escape, false).each do |key, value|
             translation = Translation.locale(locale).lookup(expand_keys(key))
 
-            if ActiveRecord.config.cleanup_with_destroy
+            if self.class.config.cleanup_with_destroy
               translation.destroy_all
             else
               translation.delete_all
             end
 
-            Translation.create(:locale => locale.to_s, :key => key.to_s, :value => value)
+            Translation.create(locale: locale.to_s, key: key.to_s, value: value)
           end
+
+          reload! if self.class.config.cache_translations
         end
 
         def reload!
           @translations = nil
+
           self
         end
 
@@ -63,15 +72,17 @@ module I18n
           @translations ||= {}
         end
 
-      protected
+        protected
 
         def lookup(locale, key, scope = [], options = {})
           key = normalize_flat_keys(locale, key, scope, options[:separator])
-          if key.first == '.'
-            key = key[1..-1]
-          end
-          if key.last == '.'
-            key = key[0..-2]
+          key = key[1..-1] if key.first == '.'
+          key = key[0..-2] if key.last == '.'
+
+          if self.class.config.cache_translations
+            keys = ([locale] + key.split(I18n::Backend::Flatten::FLATTEN_SEPARATOR)).map(&:to_sym)
+
+            return translations.dig(*keys)
           end
 
           result = if key == ''
@@ -79,10 +90,10 @@ module I18n
           else
             Translation.locale(locale).lookup(key)
           end
-        
+
           # Visit Widget addition
           result = result.where(client: options[:client],
-            entity: options[:entity])
+            entity: options[:entity])          
 
           if result.empty?
             nil
@@ -98,23 +109,25 @@ module I18n
 
         def build_translation_hash_by_key(lookup_key, translation)
           hash = {}
-          if lookup_key == ''
-            chop_range = 0..-1
+
+          chop_range = if lookup_key == ''
+            0..-1
           else
-            chop_range = (lookup_key.size + FLATTEN_SEPARATOR.size)..-1
+            (lookup_key.size + FLATTEN_SEPARATOR.size)..-1
           end
           translation_nested_keys = translation.key.slice(chop_range).split(FLATTEN_SEPARATOR)
           translation_nested_keys.each.with_index.inject(hash) do |iterator, (key, index)|
             iterator[key] = translation_nested_keys[index + 1] ?  {} : translation.value
             iterator[key]
           end
+
           hash
         end
 
         # For a key :'foo.bar.baz' return ['foo', 'foo.bar', 'foo.bar.baz']
         def expand_keys(key)
-          key.to_s.split(FLATTEN_SEPARATOR).inject([]) do |keys, key|
-            keys << [keys.last, key].compact.join(FLATTEN_SEPARATOR)
+          key.to_s.split(FLATTEN_SEPARATOR).inject([]) do |keys, k|
+            keys << [keys.last, k].compact.join(FLATTEN_SEPARATOR)
           end
         end
       end
