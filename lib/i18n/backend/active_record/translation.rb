@@ -61,7 +61,7 @@ module I18n
           if: -> { self.entity_id.present? || self.entity_type == "" }
 
         serialize :value
-        serialize :interpolations, Array
+        serialize :interpolations, coder: YAML, type: Array
         after_commit :invalidate_translations_cache
 
         class << self
